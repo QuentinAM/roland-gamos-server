@@ -74,7 +74,7 @@ export async function handleStart(ws: WebSocket, data: StartMessage) {
     sendRoomUpdate(body.roomId, room);
     // Set the next turn
     room.interval = setTimeout(() => {
-        console.log('Out of time');
+        console.log('Out of time start');
         nextTurn(body.roomId, room.currentTurn, room.currentPlayerIndex, room.gameNumber);
     }, room.timeBetweenRound * 1000 + 3_000);
 }

@@ -94,21 +94,22 @@ export async function handleGuess(ws: WebSocket, data: GuessMessage) {
         room.tracks.push(res);
         room.enteredArtists.push(res.artist);
         room.currentTurn = room.currentTurn + 1;
-
-        sendRoomUpdate(body.roomId, room);
     } else {
         console.log(`Incorrect guess in room ${body.roomId} by user ${body.userId}: ${body.guess} at turn ${room.currentTurn}.`);
         room.currentPlayerHasGuessed = false;
-
-        sendRoomUpdate(body.roomId, room);
     }
 
+    // Send updates
+    sendRoomUpdate(body.roomId, room);
+
+    // Start the next turn
     setTimeout(() => {
         nextTurn(body.roomId, room.currentTurn, room.currentPlayerIndex, room.gameNumber);
         room.interval = setTimeout(() => {
             if (room.isGameOver) return;
-            console.log('Out of time');
+            console.log('Out of time guess');
             nextTurn(body.roomId, room.currentTurn, room.currentPlayerIndex, room.gameNumber);
         }, room.timeBetweenRound * 1000);
+        rooms.set(body.roomId, room);
     }, 3_000);
 }

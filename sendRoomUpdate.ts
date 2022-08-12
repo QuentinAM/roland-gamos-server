@@ -1,3 +1,4 @@
+import { rooms } from '.';
 import { Room, UpdateResponse } from './wstypes';
 
 export function sendRoomUpdate(roomId: string, room: Room) {
@@ -29,4 +30,6 @@ export function sendRoomUpdate(roomId: string, room: Room) {
 
         player.ws?.send(JSON.stringify(response));
     });
+
+    rooms.set(roomId, room);
 }

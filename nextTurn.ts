@@ -8,8 +8,9 @@ export function nextTurn(roomId: string, currentTurn: number, currentPlayerIndex
         return;
     }
 
-    // Check if room is empty, if so delete it
+    // Check if there are still players in the room
     if (room.players.length === 0) {
+        console.log(`Room ${roomId} is empty, deleting it.`);
         rooms.delete(roomId);
         return;
     }
@@ -19,13 +20,6 @@ export function nextTurn(roomId: string, currentTurn: number, currentPlayerIndex
         return;
 
     console.log(`Turn ${currentTurn} starting in room ${roomId}.`);
-
-    // Check if there are still players in the room
-    if (room.players.length === 0) {
-        console.log(`Room ${roomId} is empty, deleting it.`);
-        rooms.delete(roomId);
-        return;
-    }
 
     let guessIsInCorrect = !room.currentPlayerHasGuessed && room.players.length > 1;
 
@@ -44,8 +38,6 @@ export function nextTurn(roomId: string, currentTurn: number, currentPlayerIndex
         room.currentPlayerHasGuessed = false;
         room.currentPlayerHasAttemptedGuess = false;
         room.currentGuess = '';
-
-        sendRoomUpdate(roomId, room);
     } else {
         // Game is over
         console.log(`Game is over in room ${roomId}.`);
@@ -76,7 +68,6 @@ export function nextTurn(roomId: string, currentTurn: number, currentPlayerIndex
         room.currentTurn = 0;
 
         // Eliminated players will be reset only if restart to correctly display leaderboard on front
-
-        sendRoomUpdate(roomId, room);
     }
+    sendRoomUpdate(roomId, room);
 }
