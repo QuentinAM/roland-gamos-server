@@ -80,7 +80,7 @@ export async function handleGuess(ws: WebSocket, data: GuessMessage) {
 
     let res;
     if (!already_said_artist) {
-        res = await guess(currentArtist.name + "," + body.guess) as Track | undefined;
+        res = await guess(currentArtist.name + "," + body.guess, room.market) as Track | undefined;
     }
 
     // Send update to all players in the room

@@ -2,29 +2,24 @@ import type { Track } from "../wstypes";
 import { getToken, getArtistPicture, spToken } from "./utils";
 const levenshtein_threshold = 2;
 
-export async function guess(guess: string): Promise<Track | undefined> {
+export async function guess(guess: string, market: string): Promise<Track | undefined> {
     // Get both artists
     const guess_split: Array<string> = guess.split(",");
     const first_artist: string = guess_split[0];
     const second_artist: string = guess_split[1];
 
-    let { track, track2, token } = await GuessEndpoint(first_artist, second_artist, 'FR', spToken);
+    let { track, token } = await GuessEndpoint(first_artist, second_artist, market, spToken);
 
     if (!track){
         return;
     }
 
     let res = await CheckTrack(track, first_artist, second_artist, token);
-    if (!res)
-    {
-        res = await CheckTrack(track2, first_artist, second_artist, token);
-    }
 
     if (!res){
         console.log('Re-attempting guess all around the world for', first_artist, second_artist);
         const response = await GuessEndpoint(first_artist, second_artist, null, spToken);
         track = response.track;
-        track2 = response.track2;
         token = response.token;
     }
 
@@ -33,17 +28,12 @@ export async function guess(guess: string): Promise<Track | undefined> {
     }
 
     res = await CheckTrack(track, first_artist, second_artist, token);
-    if (!res)
-    {
-        res = await CheckTrack(track2, first_artist, second_artist, token);
-    }
 
     return res;
 }
 
 async function CheckTrack(track: any, first_artist: string, second_artist: string, token: string)
 {
-    if (!track) return;
     const feat = IsValid(first_artist, second_artist, track.artists);
     if (track && feat[0] && feat[1]) {
         const second_artist_obj: any = feat[1];
@@ -64,7 +54,7 @@ async function CheckTrack(track: any, first_artist: string, second_artist: strin
 }
 
 async function GuessEndpoint(first_artist: string, second_artist: string, market: string | null, token: string | null): Promise<any> {
-    let url = encodeURI(`https://api.spotify.com/v1/search?limit=2&type=track${market !== null ? `&market=${market}` : ''}&q=${`${first_artist} ${second_artist}`}`);
+    let url = encodeURI(`https://api.spotify.com/v1/search?limit=25&type=track${market !== null ? `&market=${market}` : ''}&q=${`${first_artist} ${second_artist}`}`);
     
     const response = await fetch(url, {
         method: 'GET',
@@ -82,10 +72,38 @@ async function GuessEndpoint(first_artist: string, second_artist: string, market
         return GuessEndpoint(first_artist, second_artist, market, await getToken());
     }
 
-    return {
-        track: data.tracks.items[0],
-        track2: data.tracks.items[1],
-        token: token
+    let res = data.tracks?.items.map((item: any) => {
+		// Check if both artist are in item.artists list
+        const [artist1, artist2] = IsValid(first_artist, second_artist, item.artists);
+
+		if (artist1 && artist2) {
+			return {
+				album: item
+			};
+		}
+	});
+
+    // Remove undefined values
+	res = res?.filter((item: any) => {
+		return item !== undefined;
+	});
+
+	res = res?.map((item: any) => {
+		return item.album;
+	});
+
+    // Check if there is at least one result
+    if (res.length === 0) {
+        return {
+            track: null,
+            token: token
+        };
+    }
+    else{
+        return {
+            track: res[0],
+            token: token
+        };
     }
 }
 

@@ -56,5 +56,6 @@ export function handleSetting(ws: WebSocket, data: SettingMessage) {
     room.mode = body.mode;
     room.timeBetweenRound = body.timeBetweenRound;
     room.playlistStart = body.playlistStart;
+    room.market = body.market;
     sendRoomUpdate(body.roomId, room);
 }

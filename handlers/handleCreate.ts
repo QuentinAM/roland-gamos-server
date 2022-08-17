@@ -38,7 +38,8 @@ export function handleCreate(ws: WebSocket, data: CreateMessage) {
         isGameOver: false,
         spectators: [],
         winsArray: {},
-        gameNumber: 1
+        gameNumber: 1,
+        market: body.market
     });
 
     console.log(`${body.userId} created room ${roomId}`);
