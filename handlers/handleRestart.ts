@@ -29,9 +29,6 @@ export async function handleRestart(ws: WebSocket, data: RestartMessage) {
     room.enteredArtists = [];
     room.tracks = [];
 
-    // Reset room interval
-    clearTimeout(room.interval);
-
     // Check if user is in the room and the host
     if (!room?.players.find(player => player.userId === body.userId)
         || body.userId != room.hostPlayerId) {
@@ -47,6 +44,9 @@ export async function handleRestart(ws: WebSocket, data: RestartMessage) {
         ws.send(JSON.stringify(response));
         return;
     }
+
+    // Reset room interval
+    clearTimeout(room.interval);
 
     // Check if more than 2 players for TV mode
     if (room.mode === 'TV' && room.players.length <= 2) {
