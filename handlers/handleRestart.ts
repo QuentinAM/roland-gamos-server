@@ -29,6 +29,9 @@ export async function handleRestart(ws: WebSocket, data: RestartMessage) {
     room.enteredArtists = [];
     room.tracks = [];
 
+    // Reset room interval
+    clearInterval(room.interval);
+
     // Check if user is in the room and the host
     if (!room?.players.find(player => player.userId === body.userId)
         || body.userId != room.hostPlayerId) {
@@ -59,24 +62,10 @@ export async function handleRestart(ws: WebSocket, data: RestartMessage) {
     }
 
     console.log(`Restarting game in room ${body.roomId} in mode ${room.mode}.`);
-
-    // Restart game
-    room.eliminatedPlayers = [];
-    room.currentPlayerIndex = 0;
-    room.currentTurn = 1;
-    room.currentTurnStartTime = Date.now() + 5_000;
-    room.currentPlayerHasGuessed = false;
-    room.currentPlayerHasAttemptedGuess = false;
-    room.currentGuess = '';
-    room.enteredArtists = [await start(room.playlistStart.url)];
-    room.isGameOver = false;
-    room.gameNumber = room.gameNumber + 1;
-    
-    if (room.mode === undefined){
+    if (room.mode === undefined) {
         room.mode = 'NORMAL';
     }
-
-    if (room.playlistStart === undefined){
+    if (room.playlistStart === undefined) {
         room.playlistStart = {
             url: "https://open.spotify.com/playlist/4l1CEhc7ZPbaEtiPdCSGbl",
             name: 'RAP FR',
@@ -90,11 +79,26 @@ export async function handleRestart(ws: WebSocket, data: RestartMessage) {
         room.eliminatedPlayers.push(hostPlayer);
     }
 
+    // Restart game
+    room.eliminatedPlayers = [];
+    room.currentPlayerIndex = 0;
+    room.currentTurn = 1;
+    room.currentTurnStartTime = Date.now() + 3_000;
+    room.currentPlayerHasGuessed = false;
+    room.currentPlayerHasAttemptedGuess = false;
+    room.currentGuess = '';
+    room.enteredArtists = [await start(room.playlistStart.url)];
+    room.isGameOver = false;
+    room.gameNumber = room.gameNumber + 1;
+
     // Send update to all players in the room
     sendRoomUpdate(body.roomId, room);
+
     // Set the next turn
     room.interval = setTimeout(() => {
         console.log('Out of time restart');
         nextTurn(body.roomId, room.currentTurn, room.currentPlayerIndex, room.gameNumber);
     }, room.timeBetweenRound * 1000 + 3_000);
+
+    console.log(`Restarted game in room ${body.roomId} in mode ${room.mode}. First round finishes in ${room.timeBetweenRound + 3} seconds.`);
 }

@@ -5,8 +5,10 @@ export async function start(playlistStart: string | undefined, token?: string): 
     // Get playlist id by splitig playlistStart with '/'
     const playlist_split = playlistStart?.split('/');
 
-    if (playlist_split === undefined)
-    {
+    console.log('playlist_split', playlist_split);
+
+
+    if (playlist_split === undefined) {
         return {
             name: 'Nekfeu',
             imageUrl: ''

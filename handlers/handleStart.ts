@@ -69,8 +69,10 @@ export async function handleStart(ws: WebSocket, data: StartMessage) {
         hostPlayer.turn = 0;
         room.eliminatedPlayers.push(hostPlayer);
     }
+
     // Send update to all players in the room
     sendRoomUpdate(body.roomId, room);
+
     // Set the next turn
     room.interval = setTimeout(() => {
         console.log('Out of time start');

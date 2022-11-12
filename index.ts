@@ -30,6 +30,8 @@ wss.on('listening', async () => {
 // Handle incoming messages
 wss.on('connection', function connection(ws) {
     ws.on('message', function message(rawData) {
+        if (!rawData) return;
+
         const data = JSON.parse(rawData.toString()) as Message;
 
         switch (data.type) {

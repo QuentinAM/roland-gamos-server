@@ -53,23 +53,32 @@ function FormatName(name: string) {
 async function autoCompleteEndpoint(input: string, token: string | null): Promise<any> {
     let url = encodeURI(`https://api.spotify.com/v1/search?limit=3&market=FR&type=artist&q=${input}`);
 
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json',
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json() as any;
+
+        // Check for errors
+        if (data.error && data.error.status === 401 || data.error && data.error.status === 400) {
+            // Change headers and call again
+            return autoCompleteEndpoint(input, await getToken());
         }
-    });
 
-    const data = await response.json() as any;
+        return {
+            artists: data?.artists?.items ? data.artists.items : []
+        }
 
-    // Check for errors
-    if (data.error && data.error.status === 401 || data.error && data.error.status === 400) {
-        // Change headers and call again
-        return autoCompleteEndpoint(input, await getToken());
-    }
+    } catch (error) {
+        console.error(error);
 
-    return {
-        artists: data?.artists?.items ? data.artists.items : []
+        return {
+            artists: []
+        }
     }
 }

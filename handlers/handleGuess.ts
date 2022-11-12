@@ -105,11 +105,13 @@ export async function handleGuess(ws: WebSocket, data: GuessMessage) {
     // Start the next turn
     setTimeout(() => {
         nextTurn(body.roomId, room.currentTurn, room.currentPlayerIndex, room.gameNumber);
+
         room.interval = setTimeout(() => {
             if (room.isGameOver) return;
             console.log('Out of time guess');
             nextTurn(body.roomId, room.currentTurn, room.currentPlayerIndex, room.gameNumber);
         }, room.timeBetweenRound * 1000);
+
         rooms.set(body.roomId, room);
     }, 3_000);
 }

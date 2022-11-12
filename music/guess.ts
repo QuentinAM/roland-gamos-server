@@ -10,20 +10,20 @@ export async function guess(guess: string, market: string): Promise<Track | unde
 
     let { track, token } = await GuessEndpoint(first_artist, second_artist, market, spToken);
 
-    if (!track){
+    if (!track) {
         return;
     }
 
     let res = await CheckTrack(track, first_artist, second_artist, token);
 
-    if (!res){
+    if (!res) {
         console.log('Re-attempting guess all around the world for', first_artist, second_artist);
         const response = await GuessEndpoint(first_artist, second_artist, null, spToken);
         track = response.track;
         token = response.token;
     }
 
-    if (!track){
+    if (!track) {
         return;
     }
 
@@ -32,8 +32,7 @@ export async function guess(guess: string, market: string): Promise<Track | unde
     return res;
 }
 
-async function CheckTrack(track: any, first_artist: string, second_artist: string, token: string)
-{
+async function CheckTrack(track: any, first_artist: string, second_artist: string, token: string) {
     const feat = IsValid(first_artist, second_artist, track.artists);
     if (track && feat[0] && feat[1]) {
         const second_artist_obj: any = feat[1];
@@ -55,53 +54,62 @@ async function CheckTrack(track: any, first_artist: string, second_artist: strin
 
 async function GuessEndpoint(first_artist: string, second_artist: string, market: string | null, token: string | null): Promise<any> {
     let url = encodeURI(`https://api.spotify.com/v1/search?limit=25&type=track${market !== null ? `&market=${market}` : ''}&q=${`${first_artist} ${second_artist}`}`);
-    
-    const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json',
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json() as any;
+
+        // Check for errors
+        if (data.error && data.error.status === 401 || data.error && data.error.status === 400) {
+            // Change headers and call again
+            return GuessEndpoint(first_artist, second_artist, market, await getToken());
         }
-    });
 
-    const data = await response.json() as any;
+        let res = data.tracks?.items.map((item: any) => {
+            // Check if both artist are in item.artists list
+            const [artist1, artist2] = IsValid(first_artist, second_artist, item.artists);
 
-    // Check for errors
-    if (data.error && data.error.status === 401 || data.error && data.error.status === 400) {
-        // Change headers and call again
-        return GuessEndpoint(first_artist, second_artist, market, await getToken());
-    }
+            if (artist1 && artist2) {
+                return {
+                    album: item
+                };
+            }
+        });
 
-    let res = data.tracks?.items.map((item: any) => {
-		// Check if both artist are in item.artists list
-        const [artist1, artist2] = IsValid(first_artist, second_artist, item.artists);
+        // Remove undefined values
+        res = res?.filter((item: any) => {
+            return item !== undefined;
+        });
 
-		if (artist1 && artist2) {
-			return {
-				album: item
-			};
-		}
-	});
+        res = res?.map((item: any) => {
+            return item.album;
+        });
 
-    // Remove undefined values
-	res = res?.filter((item: any) => {
-		return item !== undefined;
-	});
+        // Check if there is at least one result
+        if (res.length === 0) {
+            return {
+                track: null,
+                token: token
+            };
+        }
+        else {
+            return {
+                track: res[0],
+                token: token
+            };
+        }
+    } catch (error) {
+        console.log(error);
 
-	res = res?.map((item: any) => {
-		return item.album;
-	});
-
-    // Check if there is at least one result
-    if (res.length === 0) {
         return {
             track: null,
-            token: token
-        };
-    }
-    else{
-        return {
-            track: res[0],
             token: token
         };
     }
@@ -114,7 +122,7 @@ function IsValid(first_artist: string, second_artist: string, artists: Array<any
     return [first_artist_found, second_artist_found];
 }
 
-function FormatName(name: string){
+function FormatName(name: string) {
     // Lowercase
     name = name.toLowerCase();
 
