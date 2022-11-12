@@ -30,7 +30,7 @@ export async function handleRestart(ws: WebSocket, data: RestartMessage) {
     room.tracks = [];
 
     // Reset room interval
-    clearInterval(room.interval);
+    clearTimeout(room.interval);
 
     // Check if user is in the room and the host
     if (!room?.players.find(player => player.userId === body.userId)

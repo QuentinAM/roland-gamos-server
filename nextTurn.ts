@@ -11,6 +11,8 @@ export function nextTurn(roomId: string, currentTurn: number, currentPlayerIndex
     // Check if there are still players in the room
     if (room.players.length === 0) {
         console.log(`Room ${roomId} is empty, deleting it.`);
+
+        clearTimeout(room.interval);
         rooms.delete(roomId);
         return;
     }

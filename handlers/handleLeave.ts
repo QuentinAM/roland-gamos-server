@@ -44,6 +44,7 @@ export function handleLeave(ws: WebSocket, data: LeaveMessage) {
     // If no players left, destroy room
     if (room.players.length === 0) {
         console.log(`Room ${body.roomId} is empty, deleting...`);
+        clearInterval(room.interval);
         rooms.delete(body.roomId);
         return;
     }
