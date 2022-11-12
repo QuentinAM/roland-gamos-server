@@ -53,6 +53,10 @@ async function CheckTrack(track: any, first_artist: string, second_artist: strin
 }
 
 async function GuessEndpoint(first_artist: string, second_artist: string, market: string | null, token: string | null): Promise<any> {
+    if (!token) {
+        token = await getToken();
+    }
+
     let url = encodeURI(`https://api.spotify.com/v1/search?limit=25&type=track${market !== null ? `&market=${market}` : ''}&q=${`${first_artist} ${second_artist}`}`);
 
     try {
@@ -82,6 +86,16 @@ async function GuessEndpoint(first_artist: string, second_artist: string, market
                 };
             }
         });
+
+        if (!res) {
+            console.error('No results for', first_artist, second_artist);
+            console.error('An error occurred while fetching the track:', data);
+
+            return {
+                track: undefined,
+                token: token
+            };
+        }
 
         // Remove undefined values
         res = res?.filter((item: any) => {

@@ -18,10 +18,9 @@ export function nextTurn(roomId: string, currentTurn: number, currentPlayerIndex
     }
 
     // Check if turn is already over
-    if (room.currentTurn != currentTurn || room.gameNumber != gameNumber || room.isGameOver) // TODO: fix this : it work but some calls are made while game is finished
+    if (room.currentTurn != currentTurn || room.gameNumber != gameNumber || room.isGameOver)
         return;
 
-    console.log(`Turn ${currentTurn} starting in room ${roomId}.`);
 
     let guessIsInCorrect = !room.currentPlayerHasGuessed && room.players.length > 1;
 
@@ -35,6 +34,8 @@ export function nextTurn(roomId: string, currentTurn: number, currentPlayerIndex
 
     if (room.players.length > 1) {
         // Go to the next turn
+        console.log(`Turn ${currentTurn} starting in room ${roomId}.`);
+
         room.currentPlayerIndex = guessIsInCorrect ? room.currentPlayerIndex % room.players.length : (room.currentPlayerIndex + 1) % room.players.length;
         room.currentTurnStartTime = Date.now();
         room.currentPlayerHasGuessed = false;
@@ -68,8 +69,8 @@ export function nextTurn(roomId: string, currentTurn: number, currentPlayerIndex
 
         // Reset turn
         room.currentTurn = 0;
-
-        // Eliminated players will be reset only if restart to correctly display leaderboard on front
     }
+
+    // Send update to all players in the room
     sendRoomUpdate(roomId, room);
 }

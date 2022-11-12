@@ -72,12 +72,13 @@ export async function handleGuess(ws: WebSocket, data: GuessMessage) {
     // Stop the current timer
     clearTimeout(room.interval);
 
+    console.log(`User ${body.userId} is attempting a guess '${body.guess}' in room ${body.roomId}.`);
+
     // Check if artist have already been said
     let already_said_artist = room.enteredArtists.find(artist => artist.name.toLowerCase().replace(' ', '') === body.guess.toLowerCase().replace(' ', '')) !== undefined;
 
     // Check if guess is valid
     let currentArtist = room.enteredArtists[room.enteredArtists.length - 1];
-
     let res;
     if (!already_said_artist) {
         res = await guess(currentArtist.name + "," + body.guess, room.market) as Track | undefined;
