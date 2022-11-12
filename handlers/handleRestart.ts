@@ -61,11 +61,22 @@ export async function handleRestart(ws: WebSocket, data: RestartMessage) {
         return;
     }
 
-    console.log(`Restarting game in room ${body.roomId} in mode ${room.mode}.`);
-    if (room.mode === undefined) {
+    // Restart game
+    room.eliminatedPlayers = [];
+    room.currentPlayerIndex = 0;
+    room.currentTurn = 1;
+    room.currentPlayerHasGuessed = false;
+    room.currentPlayerHasAttemptedGuess = false;
+    room.currentGuess = '';
+    room.enteredArtists = [await start(room.playlistStart.url)];
+    room.isGameOver = false;
+    room.gameNumber = room.gameNumber + 1;
+
+    if (!room.mode) {
         room.mode = 'NORMAL';
     }
-    if (room.playlistStart === undefined) {
+
+    if (!room.playlistStart) {
         room.playlistStart = {
             url: "https://open.spotify.com/playlist/4l1CEhc7ZPbaEtiPdCSGbl",
             name: 'RAP FR',
@@ -79,17 +90,7 @@ export async function handleRestart(ws: WebSocket, data: RestartMessage) {
         room.eliminatedPlayers.push(hostPlayer);
     }
 
-    // Restart game
-    room.eliminatedPlayers = [];
-    room.currentPlayerIndex = 0;
-    room.currentTurn = 1;
     room.currentTurnStartTime = Date.now() + 3_000;
-    room.currentPlayerHasGuessed = false;
-    room.currentPlayerHasAttemptedGuess = false;
-    room.currentGuess = '';
-    room.enteredArtists = [await start(room.playlistStart.url)];
-    room.isGameOver = false;
-    room.gameNumber = room.gameNumber + 1;
 
     // Send update to all players in the room
     sendRoomUpdate(body.roomId, room);
