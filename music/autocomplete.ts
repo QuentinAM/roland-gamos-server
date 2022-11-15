@@ -1,36 +1,39 @@
-import { Artist } from "../wstypes";
+import { Artist } from "@prisma/client";
+import { SpotifyArtistsResponse, SpotifySearchResponse } from "../wstypes";
 import { spToken, getToken } from "./utils";
 
 export async function autoComplete(input: string): Promise<Artist[]> {
-
     if (!input) return [];
 
+    // TODO: Hit cache before spotify endpoint
     // Get both artists
-    let { artists }: { artists: any[] } = await autoCompleteEndpoint(input, spToken);
+    let { artists: spArtists } = await autoCompleteEndpoint(input, spToken);
 
     // Filter list
     // If two arists have the same name, take the one with more followers
-    for (let i = 0; i < artists.length; i++) {
-        for (let j = i + 1; j < artists.length; j++) {
-            if (artists[i].name === artists[j].name && i != j) {
-                if (artists[i].followers.total > artists[j].followers.total) {
-                    artists.splice(j, 1);
+    for (let i = 0; i < spArtists.length; i++) {
+        for (let j = i + 1; j < spArtists.length; j++) {
+            if (spArtists[i].name === spArtists[j].name && i != j) {
+                if (spArtists[i].followers.total > spArtists[j].followers.total) {
+                    spArtists.splice(j, 1);
                 }
                 else {
-                    artists.splice(i, 1);
+                    spArtists.splice(i, 1);
                 }
             }
         }
     }
 
     // Now filter list by input
-    artists = artists.filter(artist => FormatName(artist.name).startsWith(FormatName(input)));
+    spArtists = spArtists.filter(artist => FormatName(artist.name).startsWith(FormatName(input)));
 
     // Only keep name and one images
-    artists = artists.map(artist => {
+    let artists: Artist[] = spArtists.map(artist => {
         return {
+            id: artist.id,
             name: artist.name,
-            imageUrl: artist.images.length > 0 ? artist.images[0].url : ''
+            artistImage: artist.images.length > 0 ? artist.images[0].url : '',
+            acceptedNames: [artist.name]
         }
     });
 
@@ -50,7 +53,9 @@ function FormatName(name: string) {
     return name;
 }
 
-async function autoCompleteEndpoint(input: string, token: string | null): Promise<any> {
+async function autoCompleteEndpoint(input: string, token: string | null): Promise<{
+    artists: SpotifyArtistsResponse[];
+}> {
     let url = encodeURI(`https://api.spotify.com/v1/search?limit=3&market=FR&type=artist&q=${input}`);
 
     try {
@@ -62,7 +67,7 @@ async function autoCompleteEndpoint(input: string, token: string | null): Promis
             }
         });
 
-        const data = await response.json() as any;
+        const data = await response.json() as SpotifySearchResponse;
 
         // Check for errors
         if (data.error && data.error.status === 401 || data.error && data.error.status === 400) {
@@ -70,10 +75,11 @@ async function autoCompleteEndpoint(input: string, token: string | null): Promis
             return autoCompleteEndpoint(input, await getToken());
         }
 
+        // TODO: Add to cache
+
         return {
             artists: data?.artists?.items ? data.artists.items : []
         }
-
     } catch (error) {
         console.error(error);
 

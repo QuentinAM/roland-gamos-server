@@ -1,4 +1,5 @@
-import type { Artist } from '../wstypes';
+import { Artist } from '@prisma/client';
+import { SpotifyArtistsResponse, SpotifyTrackResponse } from '../wstypes';
 import { getToken, getArtistPicture } from './utils';
 
 export async function start(playlistStart: string | undefined, token?: string): Promise<Artist> {
@@ -11,8 +12,10 @@ export async function start(playlistStart: string | undefined, token?: string): 
 
     if (playlist_split === undefined) {
         return {
+            id: '',
             name: 'Nekfeu',
-            imageUrl: ''
+            artistImage: '',
+            acceptedNames: ['Nekfeu']
         }
     }
 
@@ -35,11 +38,13 @@ export async function start(playlistStart: string | undefined, token?: string): 
     // Take random album from playlist
     const items = data.tracks.items;
     const album = items[Math.floor(Math.random() * items.length)];
-    const artists = album.track.artists;
+    const artists = album.track.artists as SpotifyArtistsResponse[];
     const artist = artists[Math.floor(Math.random() * artists.length)];
 
     return {
+        id: artist.id,
         name: artist.name,
-        imageUrl: await getArtistPicture(artist.href, token)
+        artistImage: (await getArtistPicture(artist.href, token))?.url || '',
+        acceptedNames: [artist.name]
     }
 }

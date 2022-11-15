@@ -1,12 +1,49 @@
-import type { Track } from "../wstypes";
 import { getToken, getArtistPicture, spToken } from "./utils";
+import { PrismaClient } from '@prisma/client'
+import { SpotifyArtistsResponse, SpotifySearchResponse, SpotifyTrackResponse } from "../wstypes";
 const levenshtein_threshold = 2;
+const prisma = new PrismaClient();
 
-export async function guess(guess: string, market: string): Promise<Track | undefined> {
+export async function guess(guess: string, market: string) {
     // Get both artists
     const guess_split: Array<string> = guess.split(",");
     const first_artist: string = guess_split[0];
     const second_artist: string = guess_split[1];
+
+    // Check if the guess is cached
+    const cacheRes = await prisma.track.findFirst({
+        where: {
+            AND: [
+                {
+                    artists: {
+                        some: {
+                            acceptedNames: {
+                                has: first_artist
+                            }
+                        }
+                    }
+                },
+                {
+                    artists: {
+                        some: {
+                            acceptedNames: {
+                                has: second_artist
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        include: {
+            artists: true
+        }
+    })
+
+    if (cacheRes) {
+        console.log('Found in cache:', cacheRes.name);
+
+        return cacheRes;
+    }
 
     let { track, token } = await GuessEndpoint(first_artist, second_artist, market, spToken);
 
@@ -16,43 +53,75 @@ export async function guess(guess: string, market: string): Promise<Track | unde
 
     let res = await CheckTrack(track, first_artist, second_artist, token);
 
-    if (!res) {
-        console.log('Re-attempting guess all around the world for', first_artist, second_artist);
-        const response = await GuessEndpoint(first_artist, second_artist, null, spToken);
-        track = response.track;
-        token = response.token;
-    }
-
-    if (!track) {
-        return;
-    }
-
-    res = await CheckTrack(track, first_artist, second_artist, token);
-
     return res;
 }
 
-async function CheckTrack(track: any, first_artist: string, second_artist: string, token: string) {
+async function CheckTrack(track: SpotifyTrackResponse, first_artist: string, second_artist: string, token: string) {
     const feat = IsValid(first_artist, second_artist, track.artists);
-    if (track && feat[0] && feat[1]) {
-        const second_artist_obj: any = feat[1];
-        const artist_image = await getArtistPicture(second_artist_obj.href, token);
 
-        return {
-            name: track.name,
-            trackImage: track.album.images[0].url,
-            releaseDate: track.album.release_date,
-            previewUrl: track.preview_url,
-            artist: {
-                name: second_artist_obj.name,
-                imageUrl: artist_image
+    if (track && feat[0] && feat[1]) {
+        const feat0Image = await getArtistPicture(feat[0].href, token);
+        const feat1Image = await getArtistPicture(feat[1].href, token);
+
+        let feat0AcceptedNames = [feat[0].name];
+        if (feat[0].name !== first_artist) {
+            feat0AcceptedNames.push(first_artist);
+        }
+
+        let feat1AcceptedNames = [feat[1].name];
+        if (feat[1].name !== second_artist) {
+            feat1AcceptedNames.push(second_artist);
+        }
+
+        // Add the track to the database
+        const res = await prisma.track.upsert({
+            where: {
+                id: track.id
+            },
+            update: {},
+            create: {
+                id: track.id,
+                name: track.name,
+                trackImage: track.album.images[0].url,
+                releaseDate: track.album.release_date,
+                previewUrl: track.preview_url,
+                artists: {
+                    connectOrCreate: [
+                        {
+                            where: {
+                                id: feat[0].id
+                            },
+                            create: {
+                                id: feat[0].id,
+                                name: feat[0].name,
+                                acceptedNames: feat0AcceptedNames,
+                                artistImage: feat0Image?.url || "",
+                            }
+                        },
+                        {
+                            where: {
+                                id: feat[1].id
+                            },
+                            create: {
+                                id: feat[1].id,
+                                name: feat[1].name,
+                                acceptedNames: feat1AcceptedNames,
+                                artistImage: feat1Image?.url || "",
+                            }
+                        }
+                    ]
+                }
+            },
+            include: {
+                artists: true
             }
-        };
+        });
+
+        return res;
     }
-    return;
 }
 
-async function GuessEndpoint(first_artist: string, second_artist: string, market: string | null, token: string | null): Promise<any> {
+async function GuessEndpoint(first_artist: string, second_artist: string, market: string | null, token: string | null): Promise<{ track?: SpotifyTrackResponse, token: string }> {
     if (!token) {
         token = await getToken();
     }
@@ -68,7 +137,7 @@ async function GuessEndpoint(first_artist: string, second_artist: string, market
             }
         });
 
-        const data = await response.json() as any;
+        const data = await response.json() as SpotifySearchResponse;
 
         // Check for errors
         if (data.error && data.error.status === 401 || data.error && data.error.status === 400) {
@@ -76,40 +145,25 @@ async function GuessEndpoint(first_artist: string, second_artist: string, market
             return GuessEndpoint(first_artist, second_artist, market, await getToken());
         }
 
-        let res = data.tracks?.items.map((item: any) => {
+        let res = data.tracks?.items.filter(track => {
             // Check if both artist are in item.artists list
-            const [artist1, artist2] = IsValid(first_artist, second_artist, item.artists);
+            const [artist1, artist2] = IsValid(first_artist, second_artist, track.artists);
 
-            if (artist1 && artist2) {
-                return {
-                    album: item
-                };
-            }
-        });
+            return artist1 && artist2;
+        })
 
         if (!res) {
             console.error('No results for', first_artist, second_artist);
-            console.error('An error occurred while fetching the track:', data);
+            console.error('An error might have occurred while fetching the track:', data);
 
             return {
-                track: undefined,
                 token: token
             };
         }
 
-        // Remove undefined values
-        res = res?.filter((item: any) => {
-            return item !== undefined;
-        });
-
-        res = res?.map((item: any) => {
-            return item.album;
-        });
-
         // Check if there is at least one result
         if (res.length === 0) {
             return {
-                track: null,
                 token: token
             };
         }
@@ -123,16 +177,17 @@ async function GuessEndpoint(first_artist: string, second_artist: string, market
         console.log(error);
 
         return {
-            track: null,
             token: token
         };
     }
 }
 
-function IsValid(first_artist: string, second_artist: string, artists: Array<any>) {
+function IsValid(first_artist: string, second_artist: string, artists: SpotifyArtistsResponse[]) {
     // Check if both artists are in the list of artists
     const first_artist_found = artists.find(artist => levenshtein(FormatName(artist.name), FormatName(first_artist)) <= levenshtein_threshold);
+
     const second_artist_found = artists.find(artist => levenshtein(FormatName(artist.name), FormatName(second_artist)) <= levenshtein_threshold);
+
     return [first_artist_found, second_artist_found];
 }
 

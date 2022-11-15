@@ -1,6 +1,8 @@
+import { SpotifyImageResponse } from "../wstypes";
+
 export let spToken = "";
 
-export async function getToken() {
+export async function getToken(): Promise<string> {
     const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
     const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
@@ -19,12 +21,14 @@ export async function getToken() {
                 'grant_type': 'client_credentials'
             })
         });
+
         const data = await response.json() as any;
         spToken = data.access_token;
 
         return data.access_token;
     } catch (error) {
         console.error(error);
+        throw new Error('Error getting spotify token');
     }
 }
 
@@ -38,9 +42,11 @@ export async function getArtistPicture(request: string, token?: string) {
             }
         });
 
-        const data = await response.json() as any;
+        const data = await response.json() as {
+            images: SpotifyImageResponse[];
+        };
 
-        return data.images.length > 0 ? data.images[0].url : {};
+        return data.images![0];
     } catch (error) {
         console.error(error);
     }

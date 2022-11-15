@@ -1,9 +1,10 @@
 import { WebSocket } from 'ws';
 import { nextTurn } from '../nextTurn';
 import { sendRoomUpdate } from '../sendRoomUpdate';
-import { GuessMessage, ErrorResponse, Track } from '../wstypes';
+import { GuessMessage, ErrorResponse } from '../wstypes';
 import { rooms } from '../index';
 import { guess } from '../music/guess'
+import { Artist } from '@prisma/client';
 
 export async function handleGuess(ws: WebSocket, data: GuessMessage) {
     const body = data.body;
@@ -81,7 +82,7 @@ export async function handleGuess(ws: WebSocket, data: GuessMessage) {
     let currentArtist = room.enteredArtists[room.enteredArtists.length - 1];
     let res;
     if (!already_said_artist) {
-        res = await guess(currentArtist.name + "," + body.guess, room.market) as Track | undefined;
+        res = await guess(currentArtist.name + "," + body.guess, room.market);
     }
 
     // Send update to all players in the room
@@ -93,7 +94,7 @@ export async function handleGuess(ws: WebSocket, data: GuessMessage) {
         room.currentGuess = body.guess;
         room.currentPlayerHasGuessed = true;
         room.tracks.push(res);
-        room.enteredArtists.push(res.artist);
+        room.enteredArtists.push(res.artists.find(a => a.acceptedNames.includes(body.guess)) as Artist);
         room.currentTurn = room.currentTurn + 1;
     } else {
         console.log(`Incorrect guess in room ${body.roomId} by user ${body.userId}: ${body.guess} at turn ${room.currentTurn}.`);

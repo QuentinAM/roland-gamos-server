@@ -1,10 +1,11 @@
+import { Artist, Track } from '@prisma/client';
 import { WebSocket } from 'ws';
 
 export type ModeType = 'NORMAL' | 'TV';
 export interface Playlist {
     url: string;
     name: string;
-} 
+}
 
 export interface Room {
     id: string;
@@ -23,7 +24,7 @@ export interface Room {
     enteredArtists: Artist[];
     interval?: NodeJS.Timeout;
     isGameOver: boolean;
-    
+
     // Restart
     winsArray: {
         [key: string]: number; // [userId]: wins
@@ -34,7 +35,7 @@ export interface Room {
     mode: ModeType;
     timeBetweenRound: number;
     playlistStart: Playlist;
-	market: string;
+    market: string;
 }
 
 export interface Player {
@@ -42,19 +43,6 @@ export interface Player {
     username: string;
     ws?: WebSocket;
     turn?: number;
-}
-
-export interface Track {
-    name: string;
-    trackImage: string;
-    releaseDate: string;
-    previewUrl: string;
-    artist: Artist;
-}
-
-export interface Artist {
-    name: string;
-    imageUrl: string;
 }
 
 export type MessageType = 'CREATE' | 'JOIN' | 'LEAVE' | 'START' | 'GUESS' | 'GUESSING' | 'RESTART' | 'SETTING' | 'AUTOCOMPLETE';
@@ -157,4 +145,43 @@ export interface AutocompleteResponse {
     body: {
         artists: Artist[];
     }
+}
+
+export interface SpotifySearchResponse {
+    tracks: {
+        items: SpotifyTrackResponse[];
+    }
+    artists: {
+        items: SpotifyArtistsResponse[];
+    }
+    error?: {
+        status: number;
+    }
+}
+
+export interface SpotifyTrackResponse {
+    id: string;
+    artists: SpotifyArtistsResponse[];
+    name: string;
+    album: {
+        images: SpotifyImageResponse[];
+        release_date: string;
+    }
+    preview_url: string;
+}
+
+export interface SpotifyArtistsResponse {
+    id: string;
+    name: string;
+    href: string;
+    followers: {
+        total: number;
+    },
+    images: SpotifyImageResponse[];
+}
+
+export interface SpotifyImageResponse {
+    height: number;
+    width: number;
+    url: string;
 }
