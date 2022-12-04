@@ -142,13 +142,13 @@ async function GuessEndpoint(first_artist: string, second_artist: string, market
         // Check for errors
         if (data.error && data.error.status === 401 || data.error && data.error.status === 400) {
             // Change headers and call again
-            return GuessEndpoint(first_artist, second_artist, market, await getToken());
+            return GuessEndpoint(first_artist, second_artist, market, token);
         }
 
         let res = data.tracks?.items.filter(track => {
             // Check if both artist are in item.artists list
             const [artist1, artist2] = IsValid(first_artist, second_artist, track.artists);
-
+            
             return artist1 && artist2;
         })
 
